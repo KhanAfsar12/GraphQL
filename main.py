@@ -114,6 +114,33 @@ class Query:
                     )
                 )
             return result
+        
+    @strawberry.field
+    def post(self, id: int) -> Optional[PostType]:
+        from database import engine
+        from sqlmodel import Session, select
+        from models import Post
+        
+        with Session(engine) as session:
+            post = session.get(Post, id)
+            if not post:
+                return None
+
+            post_with_author = session.get(Post, post.id)
+            return PostType(
+                id=post_with_author.id,
+                title=post_with_author.title,
+                content=post_with_author.content,
+                created_at=post_with_author.created_at.isoformat(),
+                author= UserType(
+                    id=post_with_author.author.id,
+                    name=post_with_author.author.name,
+                    email=post_with_author.author.email,
+                    age=post_with_author.author.age,
+                    created_at=post_with_author.author.created_at.isoformat()
+                )
+            )
+
 
 # Mutation class with all fields defined directly
 @strawberry.type
@@ -229,6 +256,58 @@ class Mutation:
                     created_at=post_with_author.author.created_at.isoformat()
                 )
             )
+        
+    @strawberry.mutation
+    def update_post(self, id:int, title:Optional[str] = None, content:Optional[str] = None) -> Optional[PostType]:
+        from database import engine
+        from sqlmodel import Session, select
+        from models import Post, User
+
+        with Session(engine) as session:
+            post = session.get(Post, id)
+            if not post:
+                raise Exception("Post not found")
+            
+            if title is not None:
+                post.title = title
+            if content is not None:
+                post.content = content
+
+            session.add(post)
+            session.commit()
+            session.refresh(post)
+
+            post_with_author = session.get(Post, post.id)
+
+            return PostType(
+                id=post_with_author.id,
+                title=post_with_author.content,
+                content=post_with_author.content,
+                created_at=post_with_author.created_at.isoformat(),
+                author=UserType(
+                    id=post_with_author.author.id,
+                    name=post_with_author.author.name,
+                    email=post_with_author.author.email,
+                    age=post_with_author.author.age,
+                    created_at=post_with_author.author.created_at.isoformat()
+                )
+            )
+        
+    @strawberry.mutation
+    def delete_post(self, id: int) -> bool:
+        from database import engine
+        from sqlmodel import Session, select
+        from models import Post
+
+        with Session(engine) as session:
+            post = session.get(Post, id)
+            if not post:
+                raise Exception("Post not found")
+            
+            session.delete(post)
+            session.commit()
+            return True
+        
 
 @strawberry.type
 class Subscription:

@@ -53,7 +53,8 @@ class Query:
         with Session(engine) as session:
             statement = select(User).offset(offset).limit(limit)
             users = session.exec(statement).all()
-            
+            print("statement->", statement)
+            print("users->", users)
             return [
                 UserType(
                     id=user.id,
